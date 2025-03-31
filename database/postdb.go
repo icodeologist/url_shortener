@@ -76,21 +76,20 @@ func MakeShortUrl(userID int) string {
 	return getUniqueID
 }
 
-func UpdateShortID(db *gorm.DB, userID int) error {
+func UpdateShortID(db *gorm.DB, userID int) (string, error) {
 	var user User
 	result := db.First(&user, userID)
 	if result.Error != nil {
-		return result.Error
+		return "", result.Error
 	}
-	fmt.Println(MakeShortUrl(userID))
+	// get the short ID for the user ID
 	newShortID := string(MakeShortUrl(userID))
-	fmt.Println("New short ID", newShortID)
 	res := db.Model(&user).Update("ShortID", newShortID)
 	if res.Error != nil {
-		return res.Error
+		return "", res.Error
 	}
 	db.Save(&user)
-	return nil
+	return newShortID, nil
 }
 
 func DeleteEntitybyID(db *gorm.DB, userID int) {
@@ -115,4 +114,10 @@ func GetLongURL(db *gorm.DB, shortID string) (string, error) {
 		return "", res.Error
 	}
 	return user.LongUrl, nil
+}
+
+func GenerateShortURL(db *gorm.DB, shortID string) string {
+	shortURL := "usly/" + shortID
+	return shortURL
+
 }
