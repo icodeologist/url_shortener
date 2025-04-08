@@ -2,21 +2,27 @@ package database
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"time"
-
-	"github.com/icodeologist/url_shortner/urlconverter"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
+	"os"
 )
 
 type User struct {
-	ID       uint `gorm:"unique;primarykey;autoincrement"`
-	LongUrl  string
-	ShortID  string `gorm:"column:shortid;type:varchar(255)"`
-	CreateAt time.Time
-	Clicks   uint `gorm:"column:shortid;default:0"`
+	ID       uint   `gorm:"primarykey" json:"id"`
+	Username string `gorm:"unique;not null;" json:"username"`
+	Email    string `gorm:"unique;not null;" json:"email"`
+	Password string `gorm:"unique;not null;"`
+	// one to many relation ship with urls
+	URLs []URL
+}
+
+type URL struct {
+	ID      uint   `gorm:"unique;primarykey;autoincrement:true" json:"urlid"`
+	LongUrl string `json:"longurl"`
+	ShortID string `gorm:"column:shortid;type:varchar(256);default:0" json:"shortid"`
+	UserID  uint   `json:"user_id"` // this is the foreighkey
+	User    User   `gorm:"foreignKey:UserID"`
 }
 
 func ConnectToPSQL() (*gorm.DB, error) {
@@ -35,89 +41,13 @@ func ConnectToPSQL() (*gorm.DB, error) {
 	return db, nil
 }
 
-// NOTE newuser is a pointer
-func CreateNewUser(db *gorm.DB, newuser User) error {
-	result := db.Create(&newuser)
-	db.Save(&newuser)
+func DeleteByID(db *gorm.DB, uID uint) {
+	result := db.Delete(&User{}, uID)
 	if result.Error != nil {
-		return result.Error
+		log.Fatal("Error deleting the record")
 	}
-	return nil
-}
-
-func GetUserByID(db *gorm.DB, userID int) (*User, error) {
-	var url User
-	// user is empty User object
-	result := db.First(&url, userID)
-	if result.Error != nil {
-		return nil, result.Error
+	if result.RowsAffected == 0 {
+		log.Fatal("Id was not found")
 	}
-	return &url, nil
-}
-
-func SetUpDb() (*gorm.DB, error) {
-	db, err := ConnectToPSQL()
-	if err != nil {
-		return nil, err
-	} else {
-
-		er := db.AutoMigrate(&User{})
-		if er != nil {
-			log.Fatal(er)
-		} else {
-			fmt.Println("Migrated successfully")
-		}
-	}
-	return db, nil
-}
-
-func MakeShortUrl(userID int) string {
-	getUniqueID := urlconverter.Base62Encoding(userID)
-	return getUniqueID
-}
-
-func UpdateShortID(db *gorm.DB, userID int) (string, error) {
-	var user User
-	result := db.First(&user, userID)
-	if result.Error != nil {
-		return "", result.Error
-	}
-	// get the short ID for the user ID
-	newShortID := string(MakeShortUrl(userID))
-	res := db.Model(&user).Update("ShortID", newShortID)
-	if res.Error != nil {
-		return "", res.Error
-	}
-	db.Save(&user)
-	return newShortID, nil
-}
-
-func DeleteEntitybyID(db *gorm.DB, userID int) {
-	var user User
-	db.Delete(&user, userID)
-
-}
-
-func GetShortID(db *gorm.DB, userID int) (string, error) {
-	usr, err := GetUserByID(db, userID)
-	if err != nil {
-		return "", err
-	}
-	return usr.ShortID, nil
-}
-
-// this gets the longurl of given shortid
-func GetLongURL(db *gorm.DB, shortID string) (string, error) {
-	var user User
-	res := db.Where("shortID = ?", shortID).First(&user)
-	if res.Error != nil {
-		return "", res.Error
-	}
-	return user.LongUrl, nil
-}
-
-func GenerateShortURL(db *gorm.DB, shortID string) string {
-	shortURL := "usly/" + shortID
-	return shortURL
-
+	fmt.Printf("User %v deleted\n", uID)
 }

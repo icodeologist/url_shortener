@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HOME</title>
+  <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+  <ul>
+    {{ range .users }}
+    <li>
+      ID : <p><strong>{{ .ID }}</strong></p>
+      Longurl : <p><strong>{{ .LongUrl }}</strong></p>
+      ShortID : <p><strong>{{ .ShortID }}</strong></p>
+      Clicks : <p><strong>{{ .Clicks }}</strong></p>
+    </li>
+    {{ else }}
+    <li><strong>User not found</strong></li>
+    {{ end }}
+  </ul>
+
+
+
+</body>
+
+</html>

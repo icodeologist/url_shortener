@@ -24,20 +24,23 @@ func getDB() (*gorm.DB, error) {
 }
 
 func HandleCreate(c *gin.Context) {
-	var user database.User
+	var user database.URL
 	//bind the json file for now to user
-	if err := c.BindJSON(&user); err != nil {
-		log.Fatal(err)
-	}
+	longUrl := c.PostForm("longurl")
 	db, err := getDB()
 	if err != nil {
 		log.Fatal(err)
 	}
+	//update the long url
+	db.Model(&user).Update("LongUrl", longUrl)
 	res := db.Create(&user)
 	if res.Error != nil {
 		log.Fatal(res.Error)
 	}
-	c.IndentedJSON(http.StatusOK, user)
+	c.HTML(http.StatusOK, "res.html", gin.H{
+		"longurl": user.LongUrl,
+		"ID":      user.ID,
+	})
 }
 
 func HandleGetEverything(c *gin.Context) {
@@ -83,8 +86,8 @@ func HandleGetUrl(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, user)
 }
 
-func getUserbyId(db *gorm.DB, id uint) (*database.User, error) {
-	var user database.User
+func getUserbyId(db *gorm.DB, id uint) (*database.URL, error) {
+	var user database.URL
 	res := db.First(&user, id)
 	if res.Error != nil {
 		return nil, res.Error
@@ -142,12 +145,36 @@ func DeleteUser(c *gin.Context) {
 		"message": fmt.Sprintf("%v got deleted.", user.ID),
 	})
 }
+
+func displayDB(c *gin.Context) {
+	var users []database.User
+	db, err := getDB()
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error code": http.StatusInternalServerError,
+			"message":    "Could not connect to Database.",
+		})
+	}
+	db.Find(&users)
+	fmt.Println(users)
+	c.HTML(http.StatusOK, "home.html", gin.H{
+		"users": users,
+	})
+}
+
 func main() {
 	router := gin.Default()
 	//POST
+	router.LoadHTMLFiles("templates/form.html", "templates/res.html", "templates/home.html")
+	//form in home
+	router.GET("/create", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "form.html", nil)
+	})
+
 	router.POST("/add", HandleCreate)
 	//GET
 	router.GET("/urls", HandleGetEverything)
+	router.GET("/", displayDB)
 	router.GET("urls/:id", HandleGetUrl)
 	//UPDATE
 	router.PUT("/urls/:id", UpdateShortID)
